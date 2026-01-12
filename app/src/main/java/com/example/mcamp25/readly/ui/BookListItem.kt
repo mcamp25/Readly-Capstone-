@@ -42,6 +42,11 @@ fun SearchScreen(viewModel: SearchViewModel, modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(16.dp))
 
         when (uiState) {
+            is SearchUiState.Idle -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Search for books to see results")
+                }
+            }
             is SearchUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
