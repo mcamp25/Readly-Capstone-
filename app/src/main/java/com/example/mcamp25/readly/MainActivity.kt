@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,12 +12,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -154,7 +159,8 @@ fun ReadingListScreen(
                 LocalBookListItem(
                     book = book,
                     onClick = { onBookClick(book.id) },
-                    onDelete = { viewModel.removeFromReadingList(book) }
+                    onDelete = { viewModel.removeFromReadingList(book) },
+                    onRatingChanged = { newRating -> viewModel.updateRating(book.id, newRating) }
                 )
             }
         }
@@ -166,8 +172,14 @@ fun LocalBookListItem(
     book: BookEntity,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onRatingChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Strip HTML tags for cleaner display
+    val cleanDescription = remember(book.description) {
+        android.text.Html.fromHtml(book.description, android.text.Html.FROM_HTML_MODE_COMPACT).toString()
+    }
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -176,7 +188,7 @@ fun LocalBookListItem(
         Row(
             modifier = Modifier
                 .padding(8.dp)
-                .height(120.dp),
+                .height(130.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
@@ -198,7 +210,7 @@ fun LocalBookListItem(
                     text = book.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -207,17 +219,41 @@ fun LocalBookListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                
+                RatingBarMini(
+                    rating = book.rating,
+                    onRatingChanged = onRatingChanged
+                )
+                
                 Text(
-                    text = book.description,
+                    text = cleanDescription,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
             }
+        }
+    }
+}
+
+@Composable
+fun RatingBarMini(
+    rating: Int,
+    onRatingChanged: (Int) -> Unit
+) {
+    Row {
+        for (i in 1..5) {
+            Icon(
+                imageVector = if (i <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = null,
+                tint = if (i <= rating) MaterialTheme.colorScheme.secondary else Color.Gray,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable { onRatingChanged(i) }
+            )
         }
     }
 }

@@ -29,6 +29,12 @@ class ReadingListViewModel(private val bookDao: BookDao) : ViewModel() {
         }
     }
 
+    fun updateRating(bookId: String, rating: Int) {
+        viewModelScope.launch {
+            bookDao.updateRating(bookId, rating)
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

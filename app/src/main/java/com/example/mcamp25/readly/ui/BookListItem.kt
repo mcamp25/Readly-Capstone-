@@ -5,6 +5,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -18,6 +21,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -41,35 +45,73 @@ fun SearchScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            label = { Text("Search Books") },
+            placeholder = { Text("Search Books") },
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester),
             singleLine = true,
+            trailingIcon = {
+                FilledIconButton(
+                    onClick = {
+                        viewModel.searchBooks(query)
+                        keyboardController?.hide()
+                    },
+                    modifier = Modifier.padding(end = 4.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
+                    )
+                }
+            },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = {
                     viewModel.searchBooks(query)
                     keyboardController?.hide()
                 }
+            ),
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline
             )
         )
-        Button(
-            onClick = { 
-                viewModel.searchBooks(query)
-                keyboardController?.hide()
-            },
-            modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
-        ) {
-            Text("Search")
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         when (val state = uiState) {
             is SearchUiState.Idle -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Search for books to see results")
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoStories,
+                        contentDescription = null,
+                        modifier = Modifier.size(120.dp),
+                        tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "Start your collection.",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Search for the title that inspires you",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp, start = 32.dp, end = 32.dp)
+                    )
                 }
             }
             is SearchUiState.Loading -> {
@@ -98,6 +140,13 @@ fun SearchScreen(
 
 @Composable
 fun BookListItem(book: BookItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    // Strip HTML tags for cleaner display
+    val cleanDescription = remember(book.volumeInfo.description) {
+        book.volumeInfo.description?.let {
+            android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_COMPACT).toString()
+        } ?: ""
+    }
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -139,7 +188,7 @@ fun BookListItem(book: BookItem, onClick: () -> Unit, modifier: Modifier = Modif
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = book.volumeInfo.description ?: "",
+                    text = cleanDescription,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis

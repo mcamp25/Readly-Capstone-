@@ -11,7 +11,7 @@ class ReadlyApplication : Application() {
             AppDatabase::class.java,
             "readly_database"
         )
-        .fallbackToDestructiveMigration()
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
     }
 }
