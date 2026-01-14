@@ -5,15 +5,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -23,6 +33,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.mcamp25.readly.data.BookEntity
 import com.example.mcamp25.readly.ui.*
 import com.example.mcamp25.readly.ui.theme.ReadlyTheme
 
@@ -91,11 +104,17 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable<Destination.ReadingList> {
-                            ReadingListScreen()
+                            val viewModel: ReadingListViewModel = viewModel(factory = ReadingListViewModel.Factory)
+                            ReadingListScreen(
+                                viewModel = viewModel,
+                                onBookClick = { bookId ->
+                                    navController.navigate(Destination.BookDetail(bookId))
+                                }
+                            )
                         }
                         composable<Destination.BookDetail> { backStackEntry ->
                             val bookDetail: Destination.BookDetail = backStackEntry.toRoute()
-                            val viewModel: BookDetailViewModel = viewModel()
+                            val viewModel: BookDetailViewModel = viewModel(factory = BookDetailViewModel.Factory)
                             BookDetailScreen(
                                 bookId = bookDetail.bookId,
                                 viewModel = viewModel,
@@ -116,8 +135,89 @@ data class BottomNavigationItem(
 )
 
 @Composable
-fun ReadingListScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Reading List Screen")
+fun ReadingListScreen(
+    viewModel: ReadingListViewModel,
+    onBookClick: (String) -> Unit
+) {
+    val books by viewModel.readingList.collectAsState()
+
+    if (books.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Your reading list is empty")
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(books) { book ->
+                LocalBookListItem(
+                    book = book,
+                    onClick = { onBookClick(book.id) },
+                    onDelete = { viewModel.removeFromReadingList(book) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LocalBookListItem(
+    book: BookEntity,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(8.dp)
+                .height(120.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(book.thumbnail)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = book.title,
+                modifier = Modifier
+                    .width(80.dp)
+                    .fillMaxHeight(),
+                contentScale = ContentScale.FillBounds,
+                error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = book.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = book.author,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = book.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete")
+            }
+        }
     }
 }

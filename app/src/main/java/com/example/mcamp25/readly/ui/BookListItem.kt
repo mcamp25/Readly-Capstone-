@@ -24,7 +24,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.mcamp25.readly.data.BookItem
 import com.example.mcamp25.readly.ui.theme.SearchUiState
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,13 +36,6 @@ fun SearchScreen(
     val uiState by viewModel.searchUiState.collectAsState()
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-
-    LaunchedEffect(Unit) {
-        // A small delay often helps ensure the view is ready to receive focus and show the keyboard
-        delay(100)
-        focusRequester.requestFocus()
-        keyboardController?.show()
-    }
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         OutlinedTextField(

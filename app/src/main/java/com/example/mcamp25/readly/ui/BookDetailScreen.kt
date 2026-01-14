@@ -1,15 +1,16 @@
 package com.example.mcamp25.readly.ui
 
-
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,7 @@ fun BookDetailScreen(
     onBackClick: () -> Unit
 ) {
     val uiState = viewModel.uiState
+    val currentRating by viewModel.getRating(bookId).collectAsState(initial = 0)
 
     LaunchedEffect(bookId) {
         viewModel.getBook(bookId)
@@ -84,8 +86,18 @@ fun BookDetailScreen(
                             placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                        
+                        RatingBar(
+                            rating = currentRating,
+                            onRatingChanged = { newRating ->
+                                viewModel.updateRating(bookId, newRating)
+                            }
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
                         Button(
-                            onClick = { /* TODO: Add to reading list */ },
+                            onClick = { viewModel.addToReadingList(book) },
                             modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondary,
                                 contentColor = Color.White
@@ -127,6 +139,26 @@ fun BookDetailScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun RatingBar(
+    modifier: Modifier = Modifier,
+    rating: Int,
+    onRatingChanged: (Int) -> Unit
+) {
+    Row(modifier = modifier) {
+        for (i in 1..5) {
+            Icon(
+                imageVector = if (i <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = null,
+                tint = if (i <= rating) MaterialTheme.colorScheme.secondary else Color.Gray,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clickable { onRatingChanged(i) }
+            )
         }
     }
 }
