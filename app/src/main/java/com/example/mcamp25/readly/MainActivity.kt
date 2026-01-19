@@ -9,9 +9,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -64,7 +65,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
+    ) { _ ->
         // Handle permission result if needed
     }
 
@@ -258,15 +259,70 @@ fun ReadingListScreen(
             ) {
                 item { Spacer(modifier = Modifier.height(8.dp)) }
                 items(books, key = { it.id }) { book ->
-                    LocalBookListItem(
-                        book = book,
-                        onClick = { onBookClick(book.id) },
-                        onDelete = { 
-                            viewModel.removeFromReadingList(book)
-                            onBookDeleted(book)
-                        },
-                        onRatingChanged = { newRating -> viewModel.updateRating(book.id, newRating) }
+                    var isVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { isVisible = true }
+                    
+                    @Suppress("DEPRECATION")
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.EndToStart) {
+                                viewModel.removeFromReadingList(book)
+                                onBookDeleted(book)
+                                true
+                            } else {
+                                false
+                            }
+                        }
                     )
+
+                    // RESET state if it was dismissed but the book is still here (Undo)
+                    LaunchedEffect(book) {
+                        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+                            dismissState.reset()
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        modifier = Modifier.animateItem(),
+                        enter = fadeIn(animationSpec = tween(500)) +
+                                slideInVertically(initialOffsetY = { it / 2 }),
+                        exit = fadeOut()
+                    ) {
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                val color = when (dismissState.targetValue) {
+                                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                                    else -> Color.Transparent
+                                }
+                                if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(MaterialTheme.shapes.medium)
+                                            .background(color)
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            },
+                            content = {
+                                LocalBookListItem(
+                                    book = book,
+                                    onClick = { onBookClick(book.id) },
+                                    onRatingChanged = { newRating -> viewModel.updateRating(book.id, newRating) }
+                                )
+                            }
+                        )
+                    }
                 }
                 item { Spacer(modifier = Modifier.height(8.dp)) }
             }
@@ -278,7 +334,6 @@ fun ReadingListScreen(
 fun LocalBookListItem(
     book: BookEntity,
     onClick: () -> Unit,
-    onDelete: () -> Unit,
     onRatingChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -348,13 +403,6 @@ fun LocalBookListItem(
                 )
             }
             Column(modifier = Modifier.align(Alignment.Top)) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
                 IconButton(
                     onClick = {
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
