@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Search
@@ -35,10 +36,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -159,6 +163,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable<Destination.ReadingList> {
                             val viewModel: ReadingListViewModel = viewModel(factory = ReadingListViewModel.Factory)
+                            val haptic = LocalHapticFeedback.current
                             ReadingListScreen(
                                 viewModel = viewModel,
                                 onBookClick = { bookId ->
@@ -178,6 +183,7 @@ class MainActivity : ComponentActivity() {
                                             duration = SnackbarDuration.Short
                                         )
                                         if (result == SnackbarResult.ActionPerformed) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             viewModel.addBook(book)
                                         }
                                     }
@@ -238,6 +244,7 @@ fun ReadingListScreen(
     val isRefreshing = remember { mutableStateOf(false) }
     val state = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
 
     Scaffold(
         topBar = {
@@ -277,8 +284,33 @@ fun ReadingListScreen(
         }
     ) { innerPadding ->
         if (books.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text("Your reading list is empty")
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoStories,
+                    contentDescription = null,
+                    modifier = Modifier.size(100.dp),
+                    tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Your reading journey starts here.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Search for a book to fill your list!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         } else {
             PullToRefreshBox(
@@ -307,6 +339,7 @@ fun ReadingListScreen(
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
                                 if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.removeFromReadingList(book)
                                     onBookDeleted(book)
                                     true
@@ -316,6 +349,7 @@ fun ReadingListScreen(
                             }
                         )
 
+                        // RESET state if it was dismissed but the book is still here (Undo)
                         LaunchedEffect(book) {
                             if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
                                 dismissState.reset()
