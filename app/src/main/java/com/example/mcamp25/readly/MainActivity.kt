@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -492,6 +493,7 @@ fun ReadingListScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocalBookListItem(
     book: BookEntity,
@@ -504,144 +506,157 @@ fun LocalBookListItem(
         android.text.Html.fromHtml(book.description, android.text.Html.FROM_HTML_MODE_COMPACT).toString()
     }
 
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    // Provide custom gold ripple
+    CompositionLocalProvider(
+        LocalRippleConfiguration provides RippleConfiguration(color = MaterialTheme.colorScheme.secondary)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Card(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(book.thumbnail)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = book.title,
+            Row(
                 modifier = Modifier
-                    .width(90.dp)
-                    .height(130.dp)
-                    .padding(end = 4.dp),
-                contentScale = ContentScale.Crop,
-                error = painterResource(id = android.R.drawable.ic_menu_report_image),
-                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = book.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (book.isCurrentlyReading) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(26.dp),
-                            shadowElevation = 2.dp
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoStories,
-                                    contentDescription = "Currently Reading",
-                                    tint = MaterialTheme.colorScheme.onSecondary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                    if (book.isRead) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(26.dp),
-                            shadowElevation = 2.dp
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Finished",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-                Text(
-                    text = book.author,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                RatingBarMini(
-                    rating = book.rating,
-                    onRatingChanged = { 
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onRatingChanged(it) 
-                    }
-                )
-
-                Row(
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(book.thumbnail)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = book.title,
                     modifier = Modifier
-                        .padding(vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    book.publishedDate?.let { date ->
-                        val year = if (date.length >= 4) date.take(4) else date
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.outline)
-                            Spacer(Modifier.width(4.dp))
-                            Text(year, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        .width(90.dp)
+                        .height(130.dp)
+                        .padding(end = 4.dp)
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f))
+                                )
+                            )
+                        },
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                    placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = book.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (book.isCurrentlyReading) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(26.dp),
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoStories,
+                                        contentDescription = "Currently Reading",
+                                        tint = MaterialTheme.colorScheme.onSecondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                         }
-                    }
-                    book.pageCount?.let { count ->
-                        if (count > 0) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.outline)
-                                Spacer(Modifier.width(4.dp))
-                                Text("$count p", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        if (book.isRead) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(26.dp),
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Finished",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
-                }
-                
-                Text(
-                    text = cleanDescription,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Column(modifier = Modifier.align(Alignment.Top)) {
-                val context = LocalContext.current
-                IconButton(
-                    onClick = {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "Check out \"${book.title}\" by ${book.author}!")
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share Book"))
-                    }
-                ) {
-                    Icon(
-                        Icons.Default.Share,
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = book.author,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    
+                    RatingBarMini(
+                        rating = book.rating,
+                        onRatingChanged = { 
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onRatingChanged(it) 
+                        }
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        book.publishedDate?.let { date ->
+                            val year = if (date.length >= 4) date.take(4) else date
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.outline)
+                                Spacer(Modifier.width(4.dp))
+                                Text(year, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            }
+                        }
+                        book.pageCount?.let { count ->
+                            if (count > 0) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.outline)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("$count p", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                }
+                            }
+                        }
+                    }
+                    
+                    Text(
+                        text = cleanDescription,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Column(modifier = Modifier.align(Alignment.Top)) {
+                    val context = LocalContext.current
+                    IconButton(
+                        onClick = {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "Check out \"${book.title}\" by ${book.author}!")
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Book"))
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }
