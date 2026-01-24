@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 pluginManagement {
     repositories {
         google {
@@ -19,6 +21,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Readly"
+rootProject.name = "readstack"
 include(":app")
- 
