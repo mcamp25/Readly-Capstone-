@@ -66,6 +66,7 @@ fun ReadingListScreen(
         ) {
             when {
                 books == null -> LoadingList()
+                //if the user hasn't added anything yet, give them a friendly nudge
                 books!!.isEmpty() -> EmptyListHint()
                 else -> BookList(books!!, vm, onBookClick, onDeleted)
             }
@@ -80,7 +81,7 @@ private fun ReadingListTopBar(onSync: () -> Unit, setRefreshing: (Boolean) -> Un
         TopAppBar(
             title = { 
                 Text(
-                    text = "My Personal Library",
+                    text = "Reading List",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 ) 
@@ -127,7 +128,7 @@ private fun BookList(
             }
         }
 
-        // Sticky Header
+        // This little blurry header makes sure the book counter is always easy to read against the covers
         Surface(
             modifier = Modifier.fillMaxWidth().height(40.dp).zIndex(2f).blur(10.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
@@ -139,7 +140,7 @@ private fun BookList(
             contentAlignment = Alignment.CenterEnd
         ) {
             Text(
-                text = if (books.size == 1) "1 book" else "${books.size} books found",
+                text = if (books.size == 1) "1 book" else "${books.size} books added",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )

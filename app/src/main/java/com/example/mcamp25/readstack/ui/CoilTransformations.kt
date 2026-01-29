@@ -10,7 +10,6 @@ import coil.transform.Transformation
 import androidx.core.graphics.createBitmap
 import kotlin.math.abs
 
-
 class SharpenAndContrastTransformation(
     private val contrast: Float = 1.0f,
     private val brightness: Float = 0f,
@@ -19,115 +18,70 @@ class SharpenAndContrastTransformation(
     private val threshold: Int = 15
 ) : Transformation {
 
-    override val cacheKey: String = "SharpenAndContrast_v16_Safe(c=$contrast,b=$brightness,s=$saturation,a=$sharpenAmount,t=$threshold)"
+    override val cacheKey: String = "SharpenAndContrast_v18(c=$contrast,b=$brightness,s=$saturation,a=$sharpenAmount,t=$threshold)"
 
     override suspend fun transform(input: Bitmap, size: Size): Bitmap {
-        val width = input.width
-        val height = input.height
-        
-        val pixels = IntArray(width * height)
-        input.getPixels(pixels, 0, width, 0, 0, width, height)
-        val resultPixels = IntArray(width * height)
+        val (w, h) = input.width to input.height
+        val pixels = IntArray(w * h).apply { input.getPixels(this, 0, w, 0, 0, w, h) }
+        val result = pixels.copyOf()
+        val offsets = intArrayOf(-w -1, -w, -w + 1, -1, 1, w - 1, w, w + 1)
 
-        for (y in 1 until height - 1) {
-            val yOffset = y * width
-            for (x in 1 until width - 1) {
-                val idx = yOffset + x
-                
-                val c = pixels[idx]
-                val rC = (c shr 16) and 0xFF
-                val gC = (c shr 8) and 0xFF
-                val bC = c and 0xFF
 
-                val neighbors = intArrayOf(
-                    pixels[idx - width - 1], pixels[idx - width], pixels[idx - width + 1],
-                    pixels[idx - 1],         pixels[idx + 1],
-                    pixels[idx + width - 1], pixels[idx + width], pixels[idx + width + 1]
+
+        for (y in 1 until h - 1) {
+            val yOff = y * w
+            for (x in 1 until w - 1) {
+                val idx = yOff + x
+                val center = pixels[idx]
+                var sR = 0f; var sG = 0f; var sB = 0f
+                offsets.forEach { o ->
+                    val p = pixels[idx + o]
+                    sR += p.r(); sG += p.g(); sB += p.b()
+                }
+
+                val dR = center.r() - (sR / 8f); val dG = center.g() - (sG / 8f); val dB = center.b() - (sB / 8f)
+
+                val factor = calculateFactor(abs(dR) + abs(dG) + abs(dB), center.luma(), threshold, sharpenAmount)
+
+                result[idx] = packRgb(
+                    (center.r() + factor * dR).toInt().coerceIn(0, 255),
+                    (center.g() + factor * dG).toInt().coerceIn(0, 255),
+                    (center.b() + factor * dB).toInt().coerceIn(0, 255)
                 )
-
-                var sumR = 0f; var sumG = 0f; var sumB = 0f
-                for (n in neighbors) {
-                    sumR += (n shr 16) and 0xFF
-                    sumG += (n shr 8) and 0xFF
-                    sumB += n and 0xFF
-                }
-                
-                val avgR = sumR / 8f
-                val avgG = sumG / 8f
-                val avgB = sumB / 8f
-
-                val diffR = rC - avgR
-                val diffG = gC - avgG
-                val diffB = bC - avgB
-
-                val variance = abs(diffR) + abs(diffG) + abs(diffB)
-                
-                val luma = (rC * 0.299f + gC * 0.587f + bC * 0.114f) / 255f
-                val protection = (1.0f - luma * luma).coerceIn(0.2f, 1.0f)
-
-                val factor = if (variance > threshold) {
-                    ((variance - threshold) / 20f).coerceIn(0f, 1f) * sharpenAmount * protection
-                } else {
-                    -0.1f 
-                }
-
-                val resR = rC + factor * diffR
-                val resG = gC + factor * diffG
-                val resB = bC + factor * diffB
-
-                resultPixels[idx] = (0xFF shl 24) or 
-                                   (resR.toInt().coerceIn(0, 255) shl 16) or 
-                                   (resG.toInt().coerceIn(0, 255) shl 8) or 
-                                   resB.toInt().coerceIn(0, 255)
             }
         }
 
-        for (x in 0 until width) {
-            resultPixels[x] = pixels[x]
-            resultPixels[(height - 1) * width + x] = pixels[(height - 1) * width + x]
-        }
-        for (y in 0 until height) {
-            resultPixels[y * width] = pixels[y * width]
-            resultPixels[y * width + (width - 1)] = pixels[y * width + (width - 1)]
-        }
 
-        val sharpenedBitmap = Bitmap.createBitmap(resultPixels, width, height, Bitmap.Config.ARGB_8888)
-        val output = createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(output)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
+        val sharpened = Bitmap.createBitmap(result, w, h, Bitmap.Config.ARGB_8888)
+        return applyColorAdjustments(sharpened).also { sharpened.recycle() }
+    }
 
+    private fun applyColorAdjustments(input: Bitmap) = createBitmap(input.width, input.height).also { output ->
         val t = (1.0f - contrast) / 2.0f * 255.0f
         val cm = ColorMatrix(floatArrayOf(
             contrast, 0f, 0f, 0f, t + brightness,
             0f, contrast, 0f, 0f, t + brightness,
             0f, 0f, contrast, 0f, t + brightness,
             0f, 0f, 0f, 1f, 0f
-        ))
-        
-        val satMatrix = ColorMatrix()
-        satMatrix.setSaturation(saturation)
-        cm.postConcat(satMatrix)
+        )).apply { postConcat(ColorMatrix().apply { setSaturation(saturation) }) }
 
-        paint.colorFilter = ColorMatrixColorFilter(cm)
-        canvas.drawBitmap(sharpenedBitmap, 0f, 0f, paint)
-
-        sharpenedBitmap.recycle()
-        return output
+        Canvas(output).drawBitmap(input, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(cm)
+        })
     }
 }
 
+private fun Int.r() = (this shr 16) and 0xFF
+private fun Int.g() = (this shr 8) and 0xFF
+private fun Int.b() = this and 0xFF
+private fun Int.luma() = (r() * 0.299f + g() * 0.587f + b() * 0.114f) / 255f
+private fun packRgb(r: Int, g: Int, b: Int) = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
 
-fun String.toHighResBookUrl(): String {
-    val clean = this.replace("http:", "https:")
-        .replace("&edge=curl", "")
-        .replace("edge=curl", "")
-    
-    val idRegex = Regex("(?:id=|frontcover/)([^&? /]+)")
-    val id = idRegex.find(clean)?.groupValues?.get(1)
+private fun calculateFactor(v: Float, l: Float, t: Int, a: Float) =
+    ((1f - l * l).coerceIn(0.2f, 1.0f)).let {  p -> if (v > t) ((v - t) / 20f).coerceIn(0f, 1f) * a * p else -0.1f }
 
-    return if (id != null) {
-        "https://books.google.com/books/content?id=$id&printsec=frontcover&img=1&zoom=1&source=gbs_api"
-    } else {
-        clean
-    }
-}
+
+
+fun String.toHighResBookUrl() = Regex("(?:id=|frontcover/)([^&? /]+)").find(this)?.groupValues?.get(1)?.let {
+    "https://books.google.com/books/content?id=$it&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+} ?: replace("http:", "https:").replace("&edge=curl", "")

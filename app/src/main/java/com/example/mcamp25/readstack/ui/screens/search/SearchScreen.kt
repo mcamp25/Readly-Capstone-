@@ -46,7 +46,7 @@ fun SearchScreen(
             viewModel.handleImportedFile(it)
         }
     }
-
+  // Listening for what the user is looking for and offering helpful ideas as they type
     Box(modifier = modifier.fillMaxSize()) {
         SearchHeader(
             query = query,

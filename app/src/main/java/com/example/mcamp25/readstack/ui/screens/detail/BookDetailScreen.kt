@@ -5,18 +5,15 @@ import android.os.Build
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
+import com.example.mcamp25.readstack.ui.screens.detail.components.BlurredHeader
+import com.example.mcamp25.readstack.ui.screens.detail.components.DetailTopBar
+import com.example.mcamp25.readstack.ui.screens.detail.components.ErrorState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,27 +29,18 @@ fun BookDetailScreen(
     val isRead = vm.isRead
     val inProgress = vm.inProgress
     val haptic = LocalHapticFeedback.current
-    val context = LocalContext.current
-    
-    val vibrator = remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            vibratorManager.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        }
-    }
+   val vibrator = rememberVibrator()
 
+    //Re-fetch if the ID changes
     LaunchedEffect(bookId) {
         vm.getBook(bookId)
     }
-
+// Success, Loading and Error States
     Box(modifier = Modifier
         .fillMaxSize()
         .navigationBarsPadding()) {
         
-        // 1. Content Layer
+
         Box(modifier = Modifier.fillMaxSize()) {
             when (details) {
                 is BookDetailUiState.Loading -> {
@@ -62,6 +50,7 @@ fun BookDetailScreen(
                     )
                 }
                 is BookDetailUiState.Success -> {
+                    // How the user felt about the story and their book progress
                     SuccessContent(
                         book = details.book,
                         bookId = bookId,
@@ -81,67 +70,23 @@ fun BookDetailScreen(
             }
         }
 
-        // 2. Blurred Header Background
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .zIndex(2f)
-                .blur(10.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            tonalElevation = 8.dp
-        ) {
-            Column {
-                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-                Spacer(modifier = Modifier.height(64.dp))
-            }
-        }
+        BlurredHeader()
 
-        // 3. Top Action Bar
-        DetailTopBar(onNavigateBack = onNavigateBack)
+        val displayTitle = (details as? BookDetailUiState.Success)?.book?.volumeInfo?.title
+        DetailTopBar(title = displayTitle, onNavigateBack = onNavigateBack)
     }
 }
 
-@Composable
-private fun DetailTopBar(onNavigateBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .height(64.dp)
-            .zIndex(3f)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onNavigateBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        Text(
-            text = "Book Details",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 8.dp)
-        )
-    }
-}
 
 @Composable
-private fun ErrorState(onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 80.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("Error loading book details", style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) {
-            Text("Retry")
+private fun rememberVibrator(): Vibrator {
+    val context = LocalContext.current
+    return remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {            val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            manager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
     }
 }

@@ -16,7 +16,7 @@ class LibrarySyncWorker(
     override suspend fun doWork(): Result {
         return withContext(Dispatchers.IO) {
             try {
-                // Show starting notification
+                // Letting the user know that background rounds are starting
                 makeStatusNotification("Syncing library...", applicationContext)
                 
                 val database = (applicationContext as ReadstackApplication).database
@@ -25,10 +25,10 @@ class LibrarySyncWorker(
                 
                 Log.d("LibrarySyncWorker", "Found ${localBooks.size} local books to sync")
                 
-                // Simulate work
+                // Giving the system a few seconds to show the notification
                 kotlinx.coroutines.delay(3000)
                 
-                // Show success notification
+                // Success! everything is put away and ready to go!
                 makeStatusNotification("Library synced successfully!", applicationContext)
                 
                 Result.success()
