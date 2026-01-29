@@ -16,9 +16,6 @@ class LibrarySyncWorker(
     override suspend fun doWork(): Result {
         return withContext(Dispatchers.IO) {
             try {
-                // Letting the user know that background rounds are starting
-                makeStatusNotification("Syncing library...", applicationContext)
-                
                 val database = (applicationContext as ReadstackApplication).database
                 val bookDao = database.bookDao()
                 val localBooks = bookDao.getAllBooks().first()

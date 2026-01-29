@@ -37,9 +37,7 @@ data class ImageLinks(
     @SerialName("extraLarge") val extraLarge: String? = null
 )
 
-/**
- * Returns the best available image URL from the imageLinks.
- */
+// Returns the best available image URL from the imageLinks.
 fun ImageLinks?.getBestUrl(): String? {
     if (this == null) return null
     return extraLarge ?: large ?: medium ?: small ?: thumbnailUrl ?: smallThumbnail

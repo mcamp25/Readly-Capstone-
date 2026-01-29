@@ -1,6 +1,8 @@
 package com.example.mcamp25.readstack.ui.screens.detail
 
 import android.os.Vibrator
+import android.os.VibrationEffect
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -73,7 +75,23 @@ fun SuccessContent(
                 vm.addToReadingList(book, initialPages, initialDate)
             },
             onToggleReading = { vm.toggleCurrentlyReading(bookId) },
-            onToggleRead = { vm.toggleReadStatus(bookId) }
+            onToggleRead = {
+                if (!isRead) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(
+                            VibrationEffect.createOneShot(
+                                50,
+                                VibrationEffect.DEFAULT_AMPLITUDE
+                            )
+                        )
+
+                    } else {
+                        @Suppress("Deprecation")
+                        vibrator.vibrate(50)
+                    }
+                }
+                vm.toggleReadStatus(bookId)
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))

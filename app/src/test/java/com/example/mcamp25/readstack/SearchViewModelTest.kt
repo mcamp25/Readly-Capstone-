@@ -1,7 +1,7 @@
-package com.example.mcamp25.readly
+package com.example.mcamp25.readstack
 
-import com.example.mcamp25.readly.ui.screens.search.SearchUiState
-import com.example.mcamp25.readly.ui.screens.search.SearchViewModel
+import com.example.mcamp25.readstack.ui.screens.search.SearchUiState
+import com.example.mcamp25.readstack.ui.screens.search.SearchViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -19,13 +19,13 @@ class SearchViewModelTest {
 
     @Before
     fun setup() {
-        // Redirect Dispatchers.Main to our test dispatcher
+
         Dispatchers.setMain(testDispatcher)
     }
 
     @After
     fun tearDown() {
-        // Reset to original Main dispatcher
+
         Dispatchers.resetMain()
     }
 

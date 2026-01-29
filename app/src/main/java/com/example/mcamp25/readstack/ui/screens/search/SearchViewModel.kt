@@ -22,7 +22,7 @@ class SearchViewModel : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     
-    // We track the last query that was actually searched to avoid showing suggestions for it
+
     private var lastSearchedQuery: String? = null
 
     init {
@@ -35,13 +35,13 @@ class SearchViewModel : ViewModel() {
             .debounce(300)
             .distinctUntilChanged()
             .onEach { query ->
-                // If it matches our last search or is too short, we don't need suggestions
+
                 if (query.length < 3 || query == lastSearchedQuery) {
                     _suggestions.value = emptyList()
                     return@onEach
                 }
 
-                // We only fetch suggestions if we aren't busy loading a full search
+
                 if (_searchUiState.value !is SearchUiState.Loading) {
                     fetchSuggestions(query)
                 }
@@ -51,9 +51,9 @@ class SearchViewModel : ViewModel() {
 
     fun onQueryChanged(query: String) {
         _searchQuery.value = query
-        // If the user clears the search bar, we clear everything immediately
+
         if (query.isBlank()) {
-            _suggestions.value = emptyList()
+           clearSuggestions()
             lastSearchedQuery = null
         }
     }
@@ -66,7 +66,7 @@ class SearchViewModel : ViewModel() {
                 ?.distinctBy { it.lowercase() }
                 ?.take(5) ?: emptyList()
             
-            // We check again if the query is still what the user is typing
+
             if (_searchQuery.value == query && query != lastSearchedQuery) {
                 _suggestions.value = titles
             }
@@ -84,9 +84,9 @@ class SearchViewModel : ViewModel() {
                 append("subject:\"$subject\"")
             }
         }
-        // Once a search is triggered, we hide suggestions for this query
+
         lastSearchedQuery = query
-        _suggestions.value = emptyList()
+        clearSuggestions()
         searchBooks(finalQuery)
     }
 
@@ -133,7 +133,7 @@ class SearchViewModel : ViewModel() {
 
     fun resetSearch() {
         _searchUiState.value = SearchUiState.Idle
-        _suggestions.value = emptyList()
+        clearSuggestions()
         lastSearchedQuery = null
     }
 

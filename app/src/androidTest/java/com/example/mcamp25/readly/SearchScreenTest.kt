@@ -1,10 +1,10 @@
-package com.example.mcamp25.readly
+package com.example.mcamp25.readstack
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import com.example.mcamp25.readly.ui.screens.search.SearchScreen
-import com.example.mcamp25.readly.ui.screens.search.SearchViewModel
+import com.example.mcamp25.readstack.ui.screens.search.SearchScreen
+import com.example.mcamp25.readstack.ui.screens.search.SearchViewModel
 import org.junit.Rule
 import org.junit.Test
 
@@ -21,9 +21,9 @@ class SearchScreenTest {
             )
         }
 
-        // Checks if the welcome text is visible
+        // Checks if the updated welcome text is visible
         composeTestRule
-            .onNodeWithText("Start your collection.")
+            .onNodeWithText("Find your next great read.")
             .assertIsDisplayed()
     }
 }

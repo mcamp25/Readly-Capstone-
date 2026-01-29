@@ -35,7 +35,7 @@ fun BookDetailScreen(
     LaunchedEffect(bookId) {
         vm.getBook(bookId)
     }
-// Success, Loading and Error States
+
     Box(modifier = Modifier
         .fillMaxSize()
         .navigationBarsPadding()) {
@@ -82,7 +82,8 @@ fun BookDetailScreen(
 private fun rememberVibrator(): Vibrator {
     val context = LocalContext.current
     return remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {            val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
             manager.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
