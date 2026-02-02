@@ -9,11 +9,14 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.IOException
 
 class SearchViewModel : ViewModel() {
+    private var searchJob: Job? = null
     private val _searchUiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     val searchUiState: StateFlow<SearchUiState> = _searchUiState.asStateFlow()
 
@@ -29,26 +32,23 @@ class SearchViewModel : ViewModel() {
         observeSearchQuery()
     }
 
-    @OptIn(FlowPreview::class)
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeSearchQuery() {
         _searchQuery
-            .debounce(300)
+            .debounce(200)
             .distinctUntilChanged()
-            .onEach { query ->
-
-                if (query.length < 3 || query == lastSearchedQuery) {
-                    _suggestions.value = emptyList()
-                    return@onEach
-                }
-
-
-                if (_searchUiState.value !is SearchUiState.Loading) {
-                    fetchSuggestions(query)
+            .flatMapLatest { query ->
+             flow {
+                if (query.length >= 3 && query != lastSearchedQuery) {
+                    emit(fetchSuggestions(query))
+                } else {
+                    emit(emptyList())
                 }
             }
-            .launchIn(viewModelScope)
     }
-
+    .onEach { titles -> _suggestions.value = titles  }
+            .launchIn(viewModelScope)
+}
     fun onQueryChanged(query: String) {
         _searchQuery.value = query
 
@@ -58,26 +58,23 @@ class SearchViewModel : ViewModel() {
         }
     }
 
-    private suspend fun fetchSuggestions(query: String) {
-        try {
+    private suspend fun fetchSuggestions(query: String): List<String> {
+        return try {
             val result = RetrofitClient.apiService.searchBooks(query)
-            val titles = result.items?.map { it.volumeInfo.title.trim() }
+            result.items?.map { it.volumeInfo.title.trim() }
                 ?.filter { it.isNotBlank() }
                 ?.distinctBy { it.lowercase() }
                 ?.take(5) ?: emptyList()
-            
-
-            if (_searchQuery.value == query && query != lastSearchedQuery) {
-                _suggestions.value = titles
-            }
         } catch (_: Exception) {
-            _suggestions.value = emptyList()
+            emptyList()
         }
     }
 
+
+
     fun search(query: String, genre: String?) {
         val finalQuery = buildString {
-            if (query.isNotBlank()) append(query)
+            if (query.isNotBlank()) append("intitle:\"$query\"")
             if (genre != null) {
                 if (isNotEmpty()) append(" ")
                 val subject = if (genre == "Sci-Fi") "Science Fiction" else genre
@@ -92,8 +89,9 @@ class SearchViewModel : ViewModel() {
 
     private fun searchBooks(query: String) {
         if (query.isBlank()) return
+        searchJob?.cancel()
         
-        viewModelScope.launch {
+        searchJob = viewModelScope.launch {
             _searchUiState.value = SearchUiState.Loading
             try {
                 val result = RetrofitClient.apiService.searchBooks(query)

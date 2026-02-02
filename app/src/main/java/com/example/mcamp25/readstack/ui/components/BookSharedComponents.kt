@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -45,9 +47,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun StatusBadge(icon: ImageVector, color: Color) {
+fun StatusBadge(icon: ImageVector, color: Color,label: String) {
     Surface(shape = CircleShape, color = color, modifier = Modifier.padding(start = 8.dp).size(26.dp), shadowElevation = 2.dp) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
+        Box(contentAlignment = Alignment.Center) { Icon(icon, label, tint = Color.White, modifier = Modifier.size(18.dp)) }
     }
 }
 
@@ -70,14 +72,31 @@ fun MetaChip(icon: ImageVector, text: String) {
 
 @Composable
 fun RatingBarMini(rating: Int, onRatingChanged: (Int) -> Unit) {
-    Row {
+    Row(
+        modifier = Modifier.semantics {
+            contentDescription = "Current rating: $rating out of 5 stars"
+        }
+    ) {
         for (i in 1..5) {
-            val starSize by animateDpAsState(if (i <= rating) 28.dp else 24.dp, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow), label = "starSize")
+            val starSize by animateDpAsState(
+                targetValue = if (i <= rating) 28.dp else 24.dp,
+                animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+                label = "starSize"
+            )
             Icon(
                 imageVector = if (i <= rating) Icons.Default.Star else Icons.Default.StarBorder,
                 contentDescription = null,
                 tint = if (i <= rating) MaterialTheme.colorScheme.secondary else Color.Gray,
-                modifier = Modifier.size(starSize).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onRatingChanged(i) }
+                modifier = Modifier
+                    .size(starSize)
+                    .semantics{
+                        contentDescription = "Rate $i stars"
+                    }
+                    .clickable(
+                        onClickLabel = "Rate $i stars",
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onRatingChanged(i) }
             )
         }
     }

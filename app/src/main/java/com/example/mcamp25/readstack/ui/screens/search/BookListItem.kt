@@ -2,7 +2,7 @@ package com.example.mcamp25.readstack.ui.screens.search
 
 
 
-import androidx.compose.foundation.Image
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
+import coil.compose.AsyncImage
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -27,16 +28,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import coil.request.ImageRequest
-import coil.size.Precision
 import com.example.mcamp25.readstack.R
 import com.example.mcamp25.readstack.data.local.BookEntity
 import com.example.mcamp25.readstack.data.network.BookItem
 import com.example.mcamp25.readstack.data.network.getBestUrl
-import com.example.mcamp25.readstack.ui.SharpenAndContrastTransformation
 import com.example.mcamp25.readstack.ui.components.BookMetadata
 import com.example.mcamp25.readstack.ui.components.RatingBarMini
 import com.example.mcamp25.readstack.ui.components.StatusBadge
@@ -44,7 +42,6 @@ import com.example.mcamp25.readstack.ui.components.ShareAction
 import com.example.mcamp25.readstack.ui.components.getHighlightedText
 import com.example.mcamp25.readstack.ui.components.parseHtml
 import com.example.mcamp25.readstack.ui.components.shimmerEffect
-import com.example.mcamp25.readstack.ui.toHighResBookUrl
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,8 +89,8 @@ fun LocalBookListItem(book: BookEntity, onClick: () -> Unit, onRatingChanged: (I
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, false))
-                if (book.isCurrentlyReading) StatusBadge(Icons.Default.AutoStories, MaterialTheme.colorScheme.secondary)
-                if (book.isRead) StatusBadge(Icons.Default.Check, MaterialTheme.colorScheme.primary)
+                if (book.isCurrentlyReading) StatusBadge(Icons.Default.AutoStories, MaterialTheme.colorScheme.secondary, label = "Currently reading")
+                if (book.isRead) StatusBadge(Icons.Default.Check, MaterialTheme.colorScheme.primary, label = "Read")
             }
             Text(book.author, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             RatingBarMini(rating = book.rating, onRatingChanged = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onRatingChanged(it) })
@@ -116,7 +113,10 @@ private fun BaseBookCard(
     CompositionLocalProvider(LocalRippleConfiguration provides RippleConfiguration(color = MaterialTheme.colorScheme.secondary)) {
         Card(
             onClick = onClick,
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth()
+            .semantics {
+                onClick( label = "View book details" , action = null)
+        },
             elevation = CardDefaults.cardElevation(elevation),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = MaterialTheme.shapes.medium
@@ -129,26 +129,37 @@ private fun BaseBookCard(
 @Composable
 private fun BookCover(url: String?, title: String, modifier: Modifier = Modifier, showGradient: Boolean = false) {
     val noCover = painterResource(id = R.drawable.no_cover)
-    SubcomposeAsyncImage(
+    val isLoading = remember { mutableStateOf(true) }
+
+    AsyncImage(
         model = ImageRequest.Builder(LocalContext.current)
-            .data(if (url.isNullOrBlank() || url == "null") null else url.toHighResBookUrl())
-            .transformations(SharpenAndContrastTransformation(contrast = 1.1f, sharpenAmount = 0.5f))
-            .crossfade(true).allowHardware(false).precision(Precision.EXACT).build(),
+            .data(url?.replace("http:", "https:"))
+            .allowHardware(true)
+            .build(),
         contentDescription = title,
-        modifier = modifier.clip(RoundedCornerShape(8.dp)).drawWithContent {
-            drawContent()
-            if (showGradient) drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.5f))))
-        },
+        placeholder = noCover,
+        error = noCover,
+        onLoading = { isLoading.value = true },
+        onSuccess = { isLoading.value = false },
+        onError = { isLoading.value = false },
+        modifier = modifier.clip(RoundedCornerShape(8.dp))
+            .then(if (isLoading.value) Modifier.shimmerEffect() else Modifier)
+            .drawWithContent {
+                drawContent()
+                if (showGradient) drawRect(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color.Black.copy(0.5f)
+                        )
+                    )
+                )
+            },
         contentScale = ContentScale.Crop,
-        filterQuality = FilterQuality.High
-    ) {
-        when (painter.state) {
-            is AsyncImagePainter.State.Loading -> Box(Modifier.fillMaxSize().shimmerEffect())
-            is AsyncImagePainter.State.Error, is AsyncImagePainter.State.Empty -> Image(noCover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Inside)
-            else -> SubcomposeAsyncImageContent()
-        }
-    }
+    )
 }
+
+
 
 
 

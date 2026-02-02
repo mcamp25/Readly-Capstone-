@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>frontcover</w>
+      <w>intitle</w>
       <w>overlayed</w>
       <w>printsec</w>
       <w>readstack</w>

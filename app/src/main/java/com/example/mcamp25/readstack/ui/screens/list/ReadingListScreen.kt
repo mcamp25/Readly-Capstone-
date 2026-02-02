@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -24,6 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -82,20 +85,35 @@ private fun ReadingListTopBar(onSync: () -> Unit, setRefreshing: (Boolean) -> Un
             title = { 
                 Text(
                     text = "Reading List",
+                    modifier = Modifier.semantics{heading() },
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 ) 
             },
             actions = {
-                FilledIconButton(
-                    onClick = { onSync(); setRefreshing(true) },
-                    modifier = Modifier.padding(end = 8.dp).size(48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberRichTooltipPositionProvider(),
+                    tooltip = {
+                        PlainTooltip {
+                            Text("Sync my library")
+                        }
+                    },
+                    state = rememberTooltipState()
                 ) {
-                    Icon(Icons.Default.Sync, "Refresh my library", modifier = Modifier.size(28.dp))
+                    FilledIconButton(
+                        onClick = { onSync(); setRefreshing(true) },
+                        modifier = Modifier.padding(end = 8.dp).size(48.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Sync,
+                            "Refresh my library",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
         )
@@ -141,6 +159,9 @@ private fun BookList(
         ) {
             Text(
                 text = if (books.size == 1) "1 book" else "${books.size} books added",
+                modifier = Modifier.semantics{
+                    contentDescription = "You have ${books.size} books in your library"
+        },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -177,6 +198,14 @@ private fun SwipeableBookItem(
     ) {
         SwipeToDismissBox(
             state = dismissState,
+            modifier = Modifier.semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction("Delete book") {
+                        onDelete()
+                        true
+                    }
+                )
+            } ,
             enableDismissFromStartToEnd = false,
             backgroundContent = {
                 val color = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) 
@@ -192,7 +221,8 @@ private fun SwipeableBookItem(
                 LocalBookListItem(
                     book = book,
                     onClick = onClick,
-                    onRatingChanged = onRate
+                    onRatingChanged = onRate,
+                    modifier = Modifier.semantics(mergeDescendants = true) {}
                 )
             }
         )
